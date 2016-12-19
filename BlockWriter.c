@@ -22,7 +22,7 @@
 #if _WIN32 || _WIN64
 #define FSEEK _fseeki64
 #elif __GNUC__
-#define FSEEK fseeko
+#define FSEEK fseek
 #endif
 
 BlockWriter* blockwriter_init(char* fileName) {

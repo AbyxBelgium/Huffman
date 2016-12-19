@@ -43,6 +43,7 @@ int main(int argc, char* argv[]) {
 		printf("Decoding finished. Results were written to file \"%s\".\n", outputFile);
 	}
 	clock_t end = clock();
+	
 	// We can only print speed results when elapsed time is more than 0 seconds!
 	if (end - start != 0) {
 		double mbPerSec = (totalSize / (1024 * 1024)) / ((double)((end - start) / CLOCKS_PER_SEC));

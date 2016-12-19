@@ -23,7 +23,7 @@
 #if _WIN32 || _WIN64
 #define FSEEK _fseeki64
 #elif __GNUC__
-#define FSEEK fseeko
+#define FSEEK fseek
 #endif
 
 unsigned long long get_total_file_size(char* filename) {
@@ -56,7 +56,6 @@ BlockReader* blockreader_init(char* fileName, unsigned int blockSize) {
 	if (output->blockSize != 0 && output->fileSize % output->blockSize != 0) {
 		output->blocks++;
 	}
-
 	return output;
 }
 
@@ -66,7 +65,7 @@ bool blockreader_has_next(BlockReader* reader) {
 
 unsigned char* blockreader_read_block(BlockReader* reader, unsigned int* blocksize) {
 	FILE* file = fopen(reader->fileName, "rb");
-
+	
 	unsigned int size;
 	if (reader->block == reader->blocks - 1 && reader->fileSize % reader->blockSize != 0) {
 		size = reader->fileSize % reader->blockSize;
