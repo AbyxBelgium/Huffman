@@ -65,7 +65,7 @@ bool blockreader_has_next(BlockReader* reader) {
 
 unsigned char* blockreader_read_block(BlockReader* reader, unsigned int* blocksize) {
 	FILE* file = fopen(reader->fileName, "rb");
-	
+
 	unsigned int size;
 	if (reader->block == reader->blocks - 1 && reader->fileSize % reader->blockSize != 0) {
 		size = reader->fileSize % reader->blockSize;

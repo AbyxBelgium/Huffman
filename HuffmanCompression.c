@@ -3,26 +3,93 @@
 #include "BlockWriter.h"
 #include "BitStream.h"
 #include "Huffman.h"
+#include "MemoryAllocator.h"
 
 #include <stdlib.h>
+#include <pthread.h>
 
-void huffman_encode_file(char* inputFile, char* outputFile, unsigned int blockSize, unsigned long long* fileSize) {
+typedef struct ParallelInput {
+	unsigned char* inputBlock;
+	unsigned int blockLength;
+	pthread_mutex_t* mutex;
+	unsigned char threadNum;
+} ParallelInput;
+
+BitStream** thread_output;
+unsigned char* threads_done;
+pthread_cond_t condition;
+
+void* huffman_process_parallel(void* args) {
+	ParallelInput* input = (ParallelInput*) args;
+	BitStream* encodedStream = huffman_encode(input->inputBlock, input->blockLength);
+	thread_output[input->threadNum] = encodedStream;
+	free(input->inputBlock);
+	pthread_mutex_lock(input->mutex);
+	threads_done[input->threadNum] = 1;
+	pthread_cond_broadcast(&condition);
+	pthread_mutex_unlock(input->mutex);
+	return NULL;
+}
+
+void huffman_encode_file(char* inputFile, char* outputFile, unsigned int blockSize, unsigned long long* fileSize, unsigned char threads) {
 	BlockReader* reader = blockreader_init(inputFile, 1024 * 1024 * blockSize);
 	BlockWriter* writer = blockwriter_init(outputFile);
 
+	thread_output = (BitStream**) mem_alloc(sizeof(BitStream*) * threads);
+
+	// Create a thread condition variable per thread to synchronize
+	threads_done = (unsigned char*) mem_alloc(sizeof(unsigned char) * threads);
+	pthread_mutex_t* thread_mutex = (pthread_mutex_t*) mem_alloc(sizeof(pthread_mutex_t) * threads);
+	pthread_t* thread_objects = (pthread_t*) mem_alloc(sizeof(pthread_t) * threads);
+	ParallelInput* inputs = (ParallelInput*) mem_alloc(sizeof(ParallelInput) * threads);
+	pthread_cond_init(&condition, NULL);
+
+	for (unsigned char i = 0; i < threads; i++) {
+		threads_done[i] = 0;
+		pthread_mutex_init(&thread_mutex[i], NULL);
+	}
+
+	printf("Huffman encoding file: 0%% done");
 	while (blockreader_has_next(reader)) {
-		double progress = (double) (blockreader_current_block(reader) + 1) / (double) blockreader_total_blocks(reader);
-		printf("\rHuffman encoding file: %2.f%% done", progress * 100);
-		// Force flush to print progress (Linux only flushes after newline by default)
-		fflush(stdout);
-		unsigned int blockLength;
-		unsigned char* block = blockreader_read_block(reader, &blockLength);
-		BitStream* encodedStream = huffman_encode(block, blockLength);
-		unsigned int encodedLength = bitstream_length(encodedStream);
-		unsigned char* encodedData = bitstream_convert_to_array(encodedStream);
-		blockwriter_append(writer, encodedData, encodedLength);
-		free(encodedData);
-		free(block);
+		unsigned char threadsDone = 0;
+		// Read blocks of data and start new threads...
+		for (unsigned char i = 0; i < threads && blockreader_has_next(reader); i++) {
+			unsigned int blockLength;
+			unsigned char* block = blockreader_read_block(reader, &blockLength);
+
+			ParallelInput* input = &inputs[i];
+			input->inputBlock = block;
+			input->blockLength = blockLength;
+			input->mutex = &thread_mutex[i];
+			input->threadNum = i;
+
+			threads_done[i] = 0;
+			// Encoding is performed by separate threads to speed up execution time
+			pthread_create(&thread_objects[i], NULL, &huffman_process_parallel, input);
+
+			threadsDone = i;
+		}
+
+		// Wait for the threads to finish and write the encoded data to a file...
+		for (unsigned char i = 0; i <= threadsDone; i++) {
+			pthread_mutex_lock(&thread_mutex[i]);
+			while (threads_done[i] == 0) {
+				pthread_cond_wait(&condition, &thread_mutex[i]);
+			}
+			pthread_mutex_unlock(&thread_mutex[i]);
+
+			double progress = (double) (blockreader_current_block(reader) + 1) / (double) blockreader_total_blocks(reader);
+			printf("\rHuffman encoding file: %2.f%% done", progress * 100);
+			// Force flush to print progress (Linux only flushes after newline by default)
+			fflush(stdout);
+
+			BitStream* encodedStream = thread_output[i];
+
+			unsigned int encodedLength = bitstream_length(encodedStream);
+			unsigned char* encodedData = bitstream_convert_to_array(encodedStream);
+			blockwriter_append(writer, encodedData, encodedLength);
+			free(encodedData);
+		}
 	}
 
 	printf("\n");

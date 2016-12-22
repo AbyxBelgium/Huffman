@@ -1,5 +1,6 @@
 #include "BlockWriter.h"
 #include "MemoryAllocator.h"
+#include "Error.h"
 
 // These defines are needed by GCC to use fseek64 and stat64
 #define __USE_LARGEFILE64
@@ -9,6 +10,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/stat.h>
+#include <pthread.h>
 
 // Macro defines the correct stat-function for reading large files (2+GiB)
 // length. fseek only works until 2GiB filesize
@@ -30,6 +32,11 @@ BlockWriter* blockwriter_init(char* fileName) {
 	writer->fileName = fileName;
 	// Create the file if it doesn't exist or erase it if it allready exists
 	FILE* file = fopen(fileName, "wb");
+
+	if (!file) {
+		handle_error(error_init("Couldn't open file for saving... Maybe you have no write permissions? \n", FILE_NOT_CREATED_ERROR));
+	}
+
 	fclose(file);
 	return writer;
 }
