@@ -78,7 +78,7 @@ void huffman_encode_file(char* inputFile, char* outputFile, unsigned int blockSi
 			}
 			pthread_mutex_unlock(&thread_mutex[i]);
 
-			double progress = (double) (blockreader_current_block(reader) + 1) / (double) blockreader_total_blocks(reader);
+			double progress = (double) blockreader_current_block(reader) / (double) blockreader_total_blocks(reader);
 			printf("\rHuffman encoding file: %2.f%% done", progress * 100);
 			// Force flush to print progress (Linux only flushes after newline by default)
 			fflush(stdout);

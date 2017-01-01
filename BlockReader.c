@@ -77,7 +77,8 @@ unsigned char* blockreader_read_block(BlockReader* reader, unsigned int* blocksi
 
 	unsigned char* buffer = (unsigned char*) mem_alloc(sizeof(unsigned char) * (size));
 
-	FSEEK(file, reader->blockSize * reader->block, 0);
+	printf("*** BLOCKREADER: Starting address is %llu \n", ((unsigned long long) reader->blockSize) * ((unsigned long long) reader->block));
+	FSEEK(file, ((unsigned long long) reader->blockSize) * ((unsigned long long) reader->block), 0);
 	size_t bytesRead = fread(buffer, sizeof(unsigned char), size, file);
 	fclose(file);
 	reader->block++;
