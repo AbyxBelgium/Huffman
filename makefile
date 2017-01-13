@@ -8,5 +8,8 @@ BASE=ArrayList.c ArgumentChecker.c BinaryHeap.c BitStream.c BlockReader.c BlockW
 main: $(BASE) Main.c
 	$(CC) $(CFLAGS) -o Huffman.out $(BASE) Main.c
 
+library: $(BASE) Main.c
+	$(CC) $(CFLAGS) -shared -o huffman.dll $(BASE) Main.c
+
 debug: $(BASE) Main.c
 	$(CC) -std=c99 -pthread -g -o Debug.out $(BASE) Main.c
