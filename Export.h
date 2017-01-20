@@ -1,6 +1,11 @@
 #ifndef EXPORT_H
 #define EXPORT_H
 
+/**
+* This Callback will be used to report progress updates to the caller.
+*/
+typedef void(__stdcall* Callback)(const unsigned int progress);
+
 #ifdef __cpluplus
 extern "C" {
 #endif
@@ -13,7 +18,7 @@ extern "C" {
 	 *		per run).
 	 * @param unsigned int threads: The amount of threads that should be used to encode the file.
 	 */
-	__declspec(dllexport) void encode_file(char* inputFile, char* outputFile, unsigned int blockSize, unsigned int threads);
+	__declspec(dllexport) void encode_file(char* inputFile, char* outputFile, unsigned int blockSize, unsigned int threads, Callback progressCallback);
 
 	/**
 	 * Decode a file that was previously encoded with the Huffman encoding. Only files that were previously encoded with the

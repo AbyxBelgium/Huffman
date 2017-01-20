@@ -31,7 +31,7 @@ void* huffman_process_parallel(void* args) {
 	return NULL;
 }
 
-void huffman_encode_file(char* inputFile, char* outputFile, unsigned int blockSize, unsigned long long* fileSize, unsigned char threads) {
+void huffman_encode_file(char* inputFile, char* outputFile, unsigned int blockSize, unsigned long long* fileSize, unsigned char threads, Callback progressCallback) {
 	BlockReader* reader = blockreader_init(inputFile, 1024 * 1024 * blockSize);
 	BlockWriter* writer = blockwriter_init(outputFile);
 
@@ -49,7 +49,7 @@ void huffman_encode_file(char* inputFile, char* outputFile, unsigned int blockSi
 		pthread_mutex_init(&thread_mutex[i], NULL);
 	}
 
-	printf("Huffman encoding file: 0%% done");
+	progressCallback(0);
 	while (blockreader_has_next(reader)) {
 		unsigned char threadsDone = 0;
 		// Read blocks of data and start new threads...
@@ -79,7 +79,8 @@ void huffman_encode_file(char* inputFile, char* outputFile, unsigned int blockSi
 			pthread_mutex_unlock(&thread_mutex[i]);
 
 			double progress = (double) blockreader_current_block(reader) / (double) blockreader_total_blocks(reader);
-			printf("\rHuffman encoding file: %2.f%% done", progress * 100);
+			// Report progress to application
+			progressCallback((const unsigned int) (progress * 100));
 			// Force flush to print progress (Linux only flushes after newline by default)
 			fflush(stdout);
 
@@ -92,7 +93,7 @@ void huffman_encode_file(char* inputFile, char* outputFile, unsigned int blockSi
 		}
 	}
 
-	printf("\n");
+	progressCallback(100);
 
 	*fileSize = blockreader_filesize(reader);
 	blockreader_free(reader);
@@ -121,7 +122,6 @@ void huffman_decode_file(char* inputFile, char* outputFile, unsigned long long* 
 		unsigned char* data = blockreader_read_raw_block(reader, pos, length, &temp);
 		pos = pos + length;
 		double progress = (double) pos / (double) blockreader_filesize(reader);
-		printf("\rHuffman decoding file: %2.f%% done", progress * 100);
 		// Flush stdout to print progress (because no newline is present)
 		fflush(stdout);
 		BitStream* decoded = huffman_decode(data, length);
